@@ -5,6 +5,21 @@ import taglib  # Make sure to have PyTagLib library installed in your Lambda dep
 
 
 def handler(event, context):
+    print(event)
+    if event["Records"][0]["eventName"] == "ObjectCreated:Put":
+        extractMetadata(event, context)
+    elif event["Records"][0]["eventName"] == "ObjectRemoved:Delete":
+        deleteMetadata(event, context)
+
+
+def safe_execute(default, key, dict):
+    try:
+        return dict.tags[key][0]
+    except KeyError:
+        return default
+
+
+def extractMetadata(event, context):
     # Retrieve the S3 bucket and object key from the event
     s3_bucket = event["Records"][0]["s3"]["bucket"]["name"]
     s3_object_key = event["Records"][0]["s3"]["object"]["key"]
@@ -49,8 +64,15 @@ def handler(event, context):
     os.rmdir(temp_dir)
 
 
-def safe_execute(default, key, dict):
-    try:
-        return dict.tags[key][0]
-    except KeyError:
-        return default
+def deleteMetadata(event, context):
+    # Retrieve the S3 bucket and object key from the event
+    s3_object_key = event["Records"][0]["s3"]["object"]["key"]
+
+    # Delete the metadata from DynamoDB
+    dynamodb_client = boto3.client("dynamodb")
+    table_name = os.getenv("MAKEMOKEMUSICMETADATA_TABLE_NAME")
+    dynamodb_client.delete_item(
+        TableName=table_name,
+        Key={"id": {"S": s3_object_key}},
+    )
+    return

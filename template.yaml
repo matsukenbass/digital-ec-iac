@@ -26,6 +26,7 @@ Resources:
             Bucket: !Ref MakemokeAudioBucket
             Events:
               - s3:ObjectCreated:*
+              - s3:ObjectRemoved:*
       Environment:
         Variables:
           MAKEMOKEMUSICMETADATA_TABLE_NAME: !Ref MakemokeMusicMetadata
