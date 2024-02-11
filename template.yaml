@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  IaC of digital-ec-makemoke
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+Resources:
+  ExtractMusicMetadata:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: ExtractMusicMetadata
+      CodeUri: src/ExtractMusicMetadata
+      Handler: handler.handler
+      Runtime: python3.9
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        MakemokeAudioBucket:
+          Type: S3
+          Properties:
+            Bucket: !Ref MakemokeAudioBucket
+            Events:
+              - s3:ObjectCreated:*
+      Environment:
+        Variables:
+          MAKEMOKEMUSICMETADATA_TABLE_NAME: !Ref MakemokeMusicMetadata
+          MAKEMOKEMUSICMETADATA_TABLE_ARN: !GetAtt MakemokeMusicMetadata.Arn
+          S3_ACCESS_KEY_ID: '{{resolve:secretsmanager:makemokeSecrets:SecretString:S3_ACCESS_KEY_ID}}'
+          S3_SECRET_ACCESS_KEY: '{{resolve:secretsmanager:makemokeSecrets:SecretString:S3_SECRET_ACCESS_KEY}}'
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MakemokeMusicMetadata
+  ExtractMusicMetadataLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ExtractMusicMetadata}
+  MakemokeMusicMetadata:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: artist
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: artist
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  MakemokeAudioBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-makemoke-audio-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  MakemokeAudioBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MakemokeAudioBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt MakemokeAudioBucket.Arn
+              - !Sub ${MakemokeAudioBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  MakemokeMediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-makemoke-media-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  MakemokeMediaBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MakemokeMediaBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt MakemokeMediaBucket.Arn
+              - !Sub ${MakemokeMediaBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  MakemokeProductFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-makemoke-product-files-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  MakemokeProductFilesBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MakemokeProductFilesBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt MakemokeProductFilesBucket.Arn
+              - !Sub ${MakemokeProductFilesBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
