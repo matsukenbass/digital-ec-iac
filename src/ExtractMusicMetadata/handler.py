@@ -2,6 +2,7 @@ import os
 import boto3
 import tempfile
 import taglib  # Make sure to have PyTagLib library installed in your Lambda deployment package
+from boto3.dynamodb.conditions import Key, Attr
 
 
 def handler(event, context):
@@ -71,8 +72,19 @@ def deleteMetadata(event, context):
     # Delete the metadata from DynamoDB
     dynamodb_client = boto3.client("dynamodb")
     table_name = os.getenv("MAKEMOKEMUSICMETADATA_TABLE_NAME")
+
+    options = {
+        "TableName": table_name,
+        "KeyConditionExpression": "id = :id",
+        "ExpressionAttributeValues": {
+            ":id": {"S": s3_object_key},
+        },
+    }
+
+    record = dynamodb_client.query(**options)
+    print(record)
     dynamodb_client.delete_item(
         TableName=table_name,
-        Key={"id": {"S": s3_object_key}},
+        Key={"id": record["Items"][0]["id"], "artist": record["Items"][0]["artist"]},
     )
     return
