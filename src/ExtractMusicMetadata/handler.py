@@ -2,7 +2,6 @@ import os
 import boto3
 import tempfile
 import taglib  # Make sure to have PyTagLib library installed in your Lambda deployment package
-from boto3.dynamodb.conditions import Key, Attr
 
 
 def handler(event, context):
