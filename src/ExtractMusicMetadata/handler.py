@@ -1,7 +1,7 @@
 import os
 import boto3
 import tempfile
-import taglib  # Make sure to have PyTagLib library installed in your Lambda deployment package
+import taglib
 
 
 def handler(event, context):
